@@ -6,6 +6,7 @@
 //  Copyright (c) 2013 John Clem. All rights reserved.
 //
 
+#import <AppKit/AppKit.h>
 #import "JCAppleScript.h"
 
 @implementation JCAppleScript
