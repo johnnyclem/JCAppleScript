@@ -91,4 +91,56 @@
 }
 //===================================================================================================
 
+//===================================================================================================
+//  Executes an AppleScript or OSAScript file with .scpt extension located in the App bundle.
+//  Variables passed in will replace any placeholders located in the .scpt file in order.
+//  Placeholders should be formatted as $0, $1, $2 and so on.
+//  Make sure to match each %@ with a variable in the array, otherwise they will be replaced with ""
+//  and may cause your script to fail.
+//  Also, ensure that you've ticked the boxes to add the script to your target when adding scpt files
+//  to your project.  Returns TRUE if successful, returns FALSE if the script fails to execute or if
+//  the variables array contained more placeholder variables than the .scpt file
++ (NSAppleEventDescriptor *)returnValueFromAppleScript:(NSString *)path withVariables:(NSArray *)variables;
+{
+    NSDictionary* errorDict;
+    NSAppleEventDescriptor* returnDescriptor = NULL;
+    NSURL *scriptURL = [[NSBundle mainBundle] URLForResource:path withExtension:@"scpt"];
+    NSAppleScript* scriptObject = [[NSAppleScript alloc] initWithContentsOfURL:scriptURL error:&errorDict];
+    NSString *scriptString = [scriptObject source];
+    
+    for (NSString *scriptVar in variables) {
+        NSString *placeholder = [NSString stringWithFormat:@"$%lu", (unsigned long)[variables indexOfObject:scriptVar]];
+        scriptString = [scriptString stringByReplacingOccurrencesOfString:placeholder
+                                                               withString:scriptVar];
+    }
+    
+    scriptObject = [[NSAppleScript alloc] initWithSource:scriptString];
+    
+    returnDescriptor = [scriptObject executeAndReturnError: &errorDict];
+    
+    if (returnDescriptor != NULL)
+    {
+        // successful execution
+        if (kAENullEvent != [returnDescriptor descriptorType])
+        {
+            // script returned an AppleScript result
+            if (cAEList == [returnDescriptor descriptorType])
+            {
+                NSLog(@"Script Returned AppleScript objects");
+            }
+            else
+            {
+                NSLog(@"Script Returned An Objective-C Result");
+            }
+        }
+        return returnDescriptor;
+    }
+    else
+    {
+        NSLog(@"Error occurred while executing script: %@", errorDict);
+        return nil;
+    }
+}
+//===================================================================================================
+
 @end

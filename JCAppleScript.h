@@ -34,4 +34,12 @@
 + (BOOL)runAppleScript:(NSString *)path withVariables:(NSArray *)variables;
 //===================================================================================================
 
+//===================================================================================================
+//  Executes an AppleScript file with .scpt extension located in the App bundle.
+//  Pass in variables just like runAppleScript:withVariables:
+//  Returns the appleEventDescriptor
++ (NSAppleEventDescriptor *)returnValueFromAppleScript:(NSString *)path withVariables:(NSArray *)variables;
+//===================================================================================================
+
+
 @end
