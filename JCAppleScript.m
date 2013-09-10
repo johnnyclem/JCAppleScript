@@ -126,11 +126,11 @@
             // script returned an AppleScript result
             if (cAEList == [returnDescriptor descriptorType])
             {
-                NSLog(@"Script Returned AppleScript objects");
+//                NSLog(@"Script Returned AppleScript objects");
             }
             else
             {
-                NSLog(@"Script Returned An Objective-C Result");
+//                NSLog(@"Script Returned An Objective-C Result");
             }
         }
         return returnDescriptor;
