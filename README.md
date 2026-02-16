@@ -1,78 +1,249 @@
-JCAppleScript
-=============
+# JCAppleScript
 
-Simple, helpful library for using your Objective-C variables within a bundled AppleScript or OSAScript.
+A Swift package for executing AppleScript from macOS applications, featuring a built-in **MCP server** that lets AI assistants control macOS apps through pre-built command shortcuts.
 
+## Overview
 
-## Introduction
+JCAppleScript provides three components:
 
-Apple provides NSAppleScript and OSAKit for executing AppleScript in Cocoa, but there is no clear way to execute a script with variables from your Objective-C code, unless you do a long-ass ```[NSString stringWithFormat:]``` like this
+1. **JCAppleScript** (library) - Core AppleScript execution engine
+2. **AppShortcuts** (library) - Registry of pre-built AppleScript commands for popular macOS apps
+3. **jcas-mcp** (executable) - MCP (Model Context Protocol) server for AI-driven app automation
 
-```
-    NSString *scriptString = [NSString stringWithFormat:@"\
-                              tell application \"Wirecast\"\n\
-                              set myDoc to last document \n\
-                              set desired_shot to the shot named \"%@\" of myDoc\n\
-                              set normal_layer to the layer named \"normal\" of myDoc\n\
-                              set the active shot of normal_layer to the desired_shot\n\
-                              end tell", shotName];                              
-```
+## Installation
 
-JCAppleScript attempts to provide a simple, sane way of adding AppleScript files to you App bundle and executing them while optionally inserting your Objective-C variables into the script before executing it.
+### Swift Package Manager
 
-Please fork and submit pull requests if there are additional features or improvements to be made.
+Add JCAppleScript to your `Package.swift`:
 
-## Getting Started
-
-Clone the repo
-
-``` $ git clone https://github.com/johnnyclem/JCAppleScript.git ```
-
-Drag the JCAppleScript.h and JCAppleScript.m files to your Xcode Project, make sure to check the box to add JCAppleScript to your App's target(s)
-
-In your Objective-C class, import JCAppleScript
-
-``` #import "JCAppleScript ```
-
-
-## What Works
-
-- Executing an NSString as AppleScript
-- Executing a .scpt file from your App's bundle
-- Executing a .scpt file from your App's bundle with an array of NSString variables passed in
-
-## Not Yet Implemented
-
-- Return variables and/or responses after an AppleScript finishes executing
-- Support OSAScript in addition to AppleScript (i'm not sure what the difference is, but others have noted that AppleScript tends to leak memory over time, whereas OSAScript does not)
-- Pass variables to your AppleScript other than NSStrings (not sure if this is possible, but it would be sick)
-
-## Usage
-
-######Display a dialog window in Finder:
-
-```
-[JCAppleScript appleScript:@"tell application \"Finder\"\n\
-							 display dialog \"Hello World\"\n\
-							 end tell"];
+```swift
+dependencies: [
+    .package(url: "https://github.com/johnnyclem/JCAppleScript.git", branch: "main")
+]
 ```
 
-######Execute an AppleScript in your App's bundle named MyScript.scpt:
+Then add the targets you need:
+
+```swift
+.target(
+    name: "YourTarget",
+    dependencies: [
+        "JCAppleScript",     // Core engine only
+        "AppShortcuts",      // App command registry
+    ]
+)
+```
+
+## Quick Start
+
+### Using the Core Engine
+
+```swift
+import JCAppleScript
+
+let engine = AppleScriptEngine.shared
+
+// Execute raw AppleScript
+let result = try engine.execute("""
+    tell application "Finder"
+        display dialog "Hello from Swift!"
+    end tell
+""")
+
+// Send a command to an application
+let output = try engine.tell(application: "Music", command: "play")
+
+// Execute a script file with variable substitution
+let fileResult = try engine.executeFile(at: "/path/to/script.scpt", variables: ["Alice", "Hello!"])
+```
+
+### Using App Shortcuts
+
+```swift
+import AppShortcuts
+
+let registry = AppRegistry.shared
+
+// Execute a pre-built command
+let result = try registry.executeCommand("messages.send_message", arguments: [
+    "recipient": "+15551234567",
+    "message": "Hello from JCAppleScript!"
+])
+
+// Discover available commands
+let commands = registry.commands(forApp: "Reminders")
+for cmd in commands {
+    print("\(cmd.id): \(cmd.name) - \(cmd.description)")
+}
+
+// Search across all apps
+let results = registry.searchCommands("send")
+```
+
+### Using the MCP Server
+
+The `jcas-mcp` executable is a [Model Context Protocol](https://modelcontextprotocol.io) server that AI assistants (Claude, GPT, etc.) can use to control macOS applications.
+
+#### Setup with Claude Desktop
+
+Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "applescript": {
+      "command": "/path/to/jcas-mcp"
+    }
+  }
+}
+```
+
+Build the server:
+
+```bash
+swift build -c release
+# Binary at: .build/release/jcas-mcp
+```
+
+#### Available MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `execute_applescript` | Execute arbitrary AppleScript code |
+| `tell_application` | Send a command to a specific app via `tell` block |
+| `list_running_applications` | Get currently running applications |
+| `list_registered_apps` | Browse all registered app command sheets |
+| `search_commands` | Search for commands by keyword |
+| `run_app_command` | Execute a pre-built command by ID |
+| `get_app_commands` | Get detailed command info for a specific app |
+
+#### Example AI Interaction
 
 ```
-[JCAppleScript runAppleScript:@"MyScript"];
+User: "Send a message to John saying I'll be late"
+AI uses tool: run_app_command
+  command_id: "messages.send_message"
+  arguments: { "recipient": "John", "message": "I'll be late" }
 ```
 
-######Execute an AppleScript in your App's bundle named MyScript.scpt, with variables:
+## Supported Applications
 
-#####In MyScript.scpt
+JCAppleScript ships with command sheets for 10 built-in macOS apps:
+
+| App | Category | Commands | Examples |
+|-----|----------|----------|----------|
+| **Messages** | Communication | 6 | Send message, list chats, get participants |
+| **Mail** | Communication | 7 | Compose email, search, check mail, list accounts |
+| **Reminders** | Productivity | 7 | Create/complete/delete reminders, search, list |
+| **Calendar** | Productivity | 6 | Create events, list today's events, upcoming |
+| **Notes** | Productivity | 8 | Create/search/append notes, manage folders |
+| **Finder** | System | 12 | File operations, folder contents, labels, trash |
+| **Safari** | Internet | 10 | Open URLs, manage tabs, run JavaScript, get page content |
+| **Music** | Media | 13 | Playback control, playlists, library search, ratings |
+| **Terminal** | Development | 8 | Run commands, manage windows/tabs, profiles |
+| **System Settings** | System | 13 | Dark mode, volume, notifications, dialogs, system info |
+
+## Adding Custom App Support
+
+Implement the `ScriptableApp` protocol to add support for any scriptable macOS app:
+
+```swift
+import AppShortcuts
+
+struct MyApp: ScriptableApp {
+    static let bundleIdentifier = "com.example.myapp"
+    static let appName = "MyApp"
+    static let description = "My custom application"
+    static let category = AppCategory.productivity
+
+    static let commands: [AppCommand] = [
+        AppCommand(
+            id: "myapp.do_thing",
+            name: "Do Thing",
+            description: "Performs the thing",
+            parameters: [
+                CommandParameter(name: "input", description: "The input value"),
+            ]
+        ) { args in
+            let input = args["input", default: ""]
+            return """
+            tell application "MyApp"
+                do thing with "\(input)"
+            end tell
+            """
+        },
+    ]
+}
+
+// Register at runtime
+AppRegistry.shared.register(MyApp.self)
 ```
-tell application "Finder"
-	display dialog $0 $1
-end tell
+
+## Community App Registry
+
+JCAppleScript is designed to grow through community contributions. The app shortcut system uses a standard protocol (`ScriptableApp`) that makes it easy to:
+
+- **Add new applications** - Implement `ScriptableApp` for any scriptable macOS app
+- **Extend existing apps** - Submit new commands for already-registered apps
+- **Share command sheets** - Export/import app definitions via JSON manifests
+
+We're building a browsable registry (similar to npmjs.org) where you can:
+- Browse applications and their supported AppleScript commands
+- Submit new commands for existing apps
+- Add entirely new applications to the registry
+- Generate JSON manifests for integration with other tools
+
+### Exporting the Registry
+
+```swift
+let manifest = AppRegistry.shared.generateManifest()
+// Returns a JSON-serializable array of all apps and their commands
 ```
-#####In Your Objective-C Class
+
+## Architecture
+
 ```
-NSArray *myVariables = [NSArray arrayWithObjects:@"Hello", @"World", nil];
-[JCAppleScript runAppleScript:@"MyScript" withVariables:myVariables;
+JCAppleScript/
+├── Sources/
+│   ├── JCAppleScript/           # Core engine
+│   │   ├── AppleScriptEngine.swift
+│   │   ├── ScriptResult.swift
+│   │   └── ScriptError.swift
+│   ├── AppShortcuts/            # App command registry
+│   │   ├── AppProtocol.swift    # ScriptableApp protocol
+│   │   ├── AppCommand.swift     # Command & parameter types
+│   │   ├── AppRegistry.swift    # Central registry
+│   │   └── Apps/                # Built-in app sheets
+│   │       ├── MessagesApp.swift
+│   │       ├── RemindersApp.swift
+│   │       ├── FinderApp.swift
+│   │       ├── SafariApp.swift
+│   │       ├── MailApp.swift
+│   │       ├── CalendarApp.swift
+│   │       ├── NotesApp.swift
+│   │       ├── MusicApp.swift
+│   │       ├── TerminalApp.swift
+│   │       └── SystemSettingsApp.swift
+│   └── JCAppleScriptMCP/       # MCP server
+│       ├── main.swift
+│       ├── MCPServer.swift
+│       ├── MCPTransport.swift
+│       └── MCPTypes.swift
+├── Tests/
+├── Legacy/                      # Original Obj-C implementation
+├── Package.swift
+└── LICENSE
 ```
+
+## Requirements
+
+- macOS 13.0+
+- Swift 5.9+
+
+## Legacy
+
+The original Objective-C implementation (2013) is preserved in the `Legacy/` directory for reference. It provided basic NSAppleScript wrapping with variable substitution. The new Swift implementation builds on those concepts while adding the MCP server, app registry, and modern Swift patterns.
+
+## License
+
+MIT License - Copyright (c) 2013 John Clem. See [LICENSE](LICENSE) for details.

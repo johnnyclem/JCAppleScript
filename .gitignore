@@ -17,3 +17,9 @@ profile
 DerivedData
 .idea/
 .ruby-version
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+Packages/
