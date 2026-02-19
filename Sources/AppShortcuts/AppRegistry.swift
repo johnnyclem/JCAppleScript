@@ -43,6 +43,8 @@ public final class AppRegistry: Sendable {
         register(MusicApp.self)
         register(TerminalApp.self)
         register(SystemSettingsApp.self)
+        register(XcodeApp.self)
+        register(SpeechRecognitionApp.self)
     }
 
     // MARK: - Lookup

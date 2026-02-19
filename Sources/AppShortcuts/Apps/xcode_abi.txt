@@ -1,0 +1,188 @@
+/*
+Xcode Application Suite	This suite contains application-level classes and commands.
+application n [see also Standard Suite] : The Xcode application.
+elements
+contains file documents, source documents, workspace documents.
+properties
+active workspace document (workspace document) : The active workspace document in Xcode.
+create temporary debugging workspace v : Create a new temporary debugging workspace.
+create temporary debugging workspace
+→ workspace document : The new workspace object.
+Xcode Document Suite	This suite contains any document-related classes.
+document n [see also Standard Suite] : An Xcode-compatible document.
+properties
+path (text) : The document's path.
+file document n [inh. document] : A document that represents a file on disk. It also provides access to the window it appears in.
+elements
+contained by application.
+text document n [inh. file document > document] : A document that represents a text file on disk. It also provides access to the window it appears in.
+properties
+selected character range (list of integer) : The first and last character positions in the selection.
+selected paragraph range (list of integer) : The first and last paragraph positions that contain the selection.
+text (text) : The text of the text file referenced.
+notifies when closing (boolean) : Should Xcode notify other apps when this document is closed?
+source document n [inh. text document > file document > document] : A document that represents a source file on disk. It also provides access to the window it appears in.
+elements
+contained by application.
+workspace document n [inh. document] : A document that represents a workspace on disk. Workspaces are the top-level container for almost all objects and commands in Xcode.
+elements
+contains projects, schemes, run destinations; contained by application.
+properties
+loaded (boolean) : Whether the workspace document has finsished loading after being opened. Messages sent to a workspace document before it has loaded will result in errors.
+active scheme (scheme) : The workspace's scheme that will be used for scheme actions.
+active run destination (run destination) : The workspace's run destination that will be used for scheme actions.
+last scheme action result (scheme action result) : The scheme action result for the last scheme action command issued to the workspace document.
+file (file, r/o) : The workspace document's location on disk, if it has one.
+responds to
+build, clean, stop, run, test, attach, debug.
+EXAMPLE SCRIPT: Open a project and wait for its workspace document to load.
+
+open "/Users/myuser/Desktop/MyProject.xcodeproj"
+set workspaceDocument to workspace document "MyProject.xcodeproj"
+-- Wait for the workspace document to load with a 60 second timeout
+repeat 120 times
+    if loaded of workspaceDocument is true then
+        exit repeat
+    end if
+    delay 0.5
+end repeat
+if loaded of workspaceDocument is false then
+        error "Xcode workspace did not finish loading within timeout."
+end if
+Xcode Scheme Suite	This suite contains commands for scheme actions, and contains related objects.
+build v : Invoke the "build" scheme action. This command should be sent to a workspace document. The build will be performed using the workspace document's current active scheme and active run destination. This command does not wait for the action to complete; its progress can be tracked with the returned scheme action result.
+build specifier : the object for the command
+→ scheme action result : A result object which can be used to track the progress of this command and see its results.
+EXAMPLE SCRIPT: Perform a build and wait for completion.
+
+set actionResult to build workspace document 1
+repeat
+    if completed of actionResult is true then
+        exit repeat
+    end if
+    delay 0.5
+end repeat
+clean v : Invoke the "clean" scheme action. This command should be sent to a workspace document. The clean will be performed using the workspace document's current active scheme and active run destination. This command does not wait for the action to complete; its progress can be tracked with the returned scheme action result.
+clean specifier : the object for the command
+→ scheme action result : A result object which can be used to track the progress of this command and see its results.
+stop v : Stop the active scheme action, if one is running. This command should be sent to a workspace document. This command does not wait for the action to stop.
+stop specifier : the object for the command
+run v : Invoke the "run" scheme action. This command should be sent to a workspace document. The run action will be performed using the workspace document's current active scheme and active run destination. This command does not wait for the action to complete; its progress can be tracked with the returned scheme action result.
+run specifier : the object for the command
+[with command line arguments list of text] : Additional command line arguments to pass to the action.
+[with environment variables list of environment variable] : Additional environment variables to set for the action.
+→ scheme action result : A result object which can be used to track the progress of this command and see its results.
+test v : Invoke the "test" scheme action. This command should be sent to a workspace document. The test action will be performed using the workspace document's current active scheme and active run destination. This command does not wait for the action to complete; its progress can be tracked with the returned scheme action result.
+test specifier : the object for the command
+[with command line arguments list of text] : Additional command line arguments to pass to the action.
+[with environment variables list of environment variable] : Additional environment variables to set for the action.
+→ scheme action result : A result object which can be used to track the progress of this command and see its results.
+attach v : Start a new debugging session in the workspace. This command should be sent to a workspace document. This command does not wait for the action to complete.
+attach specifier : the object for the command
+to process identifier integer : The process identifier (pid) to which to attach.
+suspended boolean : Whether to start debugging in a suspended state.
+debug v : Start a debugging session using the "run" or "run without building" scheme action. This command should be sent to a workspace document. If no scheme is specified, the action will be performed using the workspace document's current active scheme. If no run destination is specified, the active run destination will be used. This command does not wait for the action to complete; its progress can be tracked with the returned scheme action result.
+debug specifier : the object for the command
+[scheme text] : Scheme name.
+[run destination specifier text] : Run destination specifier string (same as xcodebuild's -destination specifier).
+[skip building boolean] : Whether to perform "run without building" rather than "run".
+[command line arguments list of text] : Additional command line arguments to pass to the action.
+[environment variables list of environment variable] : Additional environment variables to set for the action.
+→ scheme action result : A result object which can be used to track the progress of this command and see its results.
+scheme action result n : An object describing the result of performing a scheme action command.
+elements
+contains build errors, build warnings, analyzer issues, test failures.
+properties
+id (text, r/o) : The unique identifier for the scheme.
+completed (boolean, r/o) : Whether this scheme action has completed (sucessfully or otherwise) or not.
+status (not yet started/‌running/‌cancelled/‌failed/‌error occurred/‌succeeded) : Indicates the status of the scheme action.
+error message (text) : If the result's status is "error occurred", this will be the error message; otherwise, this will be "missing value".
+build log (text) : If this scheme action performed a build, this will be the text of the build log.
+scheme action issue n : An issue (like an error or warning) generated by a scheme action.
+properties
+message (text) : The text of the issue.
+file path (text) : The file path where the issue occurred. This may be 'missing value' if the issue is not associated with a specific source file.
+starting line number (integer) : The starting line number in the file where the issue occurred. This may be 'missing value' if the issue is not associated with a specific source file.
+ending line number (integer) : The ending line number in the file where the issue occurred. This may be 'missing value' if the issue is not associated with a specific source file.
+starting column number (integer) : The starting column number in the file where the issue occurred. This may be 'missing value' if the issue is not associated with a specific source file.
+ending column number (integer) : The ending column number in the file where the issue occurred. This may be 'missing value' if the issue is not associated with a specific source file.
+build error n [inh. scheme action issue] : An error generated by a build.
+elements
+contained by scheme action results.
+build warning n [inh. scheme action issue] : A warning generated by a build.
+elements
+contained by scheme action results.
+analyzer issue n [inh. scheme action issue] : A warning generated by the static analyzer.
+elements
+contained by scheme action results.
+test failure n [inh. scheme action issue] : A failure from a test.
+elements
+contained by scheme action results.
+scheme n : A set of parameters for building, testing, launching or distributing the products of a workspace.
+elements
+contained by workspace documents.
+properties
+name (text, r/o) : The name of the scheme.
+id (text, r/o) : The unique identifier for the scheme.
+run destination n : An object which specifies parameters such as the device and architecture for which to perform a scheme action.
+elements
+contained by workspace documents.
+properties
+name (text, r/o) : The name of the run destination, as displayed in Xcode's interface.
+architecture (text, r/o) : The architecture for which this run destination results in execution.
+platform (text, r/o) : The identifier of the platform which this run destination targets, such as "macosx", "iphoneos", "iphonesimulator", etc .
+device (device, r/o) : The physical or virtual device which this run destination targets.
+companion device (device, r/o) : If the run destination's device has a companion (e.g. a paired watch for a phone) which it will use, this is that device.
+device n : A device which can be used as the target for a scheme action, as part of a run destination.
+properties
+name (text, r/o) : The name of the device.
+device identifier (text, r/o) : A stable identifier for the device, as shown in Xcode's "Devices" window.
+operating system version (text, r/o) : The version of the operating system installed on the device which this run destination targets.
+device model (text, r/o) : The model of device (e.g. "iPad Air") which this run destination targets.
+generic (boolean, r/o) : Whether this run destination is generic instead of representing a specific device. Most destinations are not generic, but a generic destination (such as "Any iOS Device") will be available for some platforms if no physical devices are connected.
+scheme action result status enum : The status of a scheme action result object.
+not yet started : The action has not yet started.
+running : The action is in progress.
+cancelled : The action was cancelled.
+failed : The action ran but did not complete successfully.
+error occurred : The action was not able to run due to an error.
+succeeded : The action succeeded.
+environment variable n
+properties
+variable name (text) : The name of the environment variable.
+variable value (text) : The value of the environment variable.
+Xcode Project Suite	This suite contains all classes and commands related to Xcode's project model.
+build configuration n : A set of build settings for a target or project. Each target in a project has the same named build configurations as the project.
+elements
+contains build settings, resolved build settings; contained by projects, targets.
+properties
+id (text, r/o) : The unique identifier for the build configuration.
+name (text, r/o) : The name of the build configuration.
+project n : An Xcode project. Projects represent project files on disk and are always open in the context of a workspace document.
+elements
+contains build configurations, targets; contained by workspace documents.
+properties
+name (text, r/o) : The name of the project
+id (text, r/o) : The unique identifier for the project.
+responds to
+build, clean.
+build setting n : A setting that controls how products are built.
+elements
+contained by build configurations.
+properties
+name (text) : The unlocalized build setting name (e.g. DSTROOT).
+value (text) : A string value for the build setting.
+resolved build setting n : An object that represents a resolved value for a build setting.
+elements
+contained by build configurations.
+properties
+name (text) : The unlocalized build setting name (e.g. DSTROOT).
+value (text) : A string value for the build setting.
+target n : A target is a blueprint for building a product. Targets inherit build settings from their project if not overridden in the target.
+elements
+contains build configurations; contained by projects.
+properties
+name (text) : The name of this target.
+id (text, r/o) : The unique identifier for the target.
+project (project, r/o) : The project that contains this target
+*/
