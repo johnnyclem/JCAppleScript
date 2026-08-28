@@ -6,9 +6,35 @@ final class AppleScriptEngineTests: XCTestCase {
 
     // MARK: - Variable Substitution
 
-    func testVariableSubstitution() throws {
-        // We can't run osascript in CI, but we can test the engine initializes
-        XCTAssertEqual(engine.defaultTimeout, 10)
+    func testVariableSubstitution() {
+        let result = AppleScriptEngine.substituteVariables(
+            in: "display dialog \"$0 says $1\"",
+            with: ["Alice", "hello"]
+        )
+        XCTAssertEqual(result, "display dialog \"Alice says hello\"")
+    }
+
+    func testVariableSubstitutionDoubleDigitOrdering() {
+        // $1 must not corrupt $10 / $11.
+        let vars = (0...10).map { "v\($0)" }
+        let result = AppleScriptEngine.substituteVariables(in: "$10 $1 $0", with: vars)
+        XCTAssertEqual(result, "v10 v1 v0")
+    }
+
+    // MARK: - Language inference
+
+    func testLanguageInference() {
+        XCTAssertEqual(AppleScriptEngine.inferLanguage(fromPath: "/tmp/a.js"), .javaScript)
+        XCTAssertEqual(AppleScriptEngine.inferLanguage(fromPath: "/tmp/a.JXA"), .javaScript)
+        XCTAssertEqual(AppleScriptEngine.inferLanguage(fromPath: "/tmp/a.applescript"), .appleScript)
+        XCTAssertEqual(AppleScriptEngine.inferLanguage(fromPath: "/tmp/a.scpt"), .appleScript)
+    }
+
+    // MARK: - Error parsing
+
+    func testParseErrorNumber() {
+        XCTAssertEqual(AppleScriptEngine.parseErrorNumber(from: "syntax error: blah (-2741)"), -2741)
+        XCTAssertNil(AppleScriptEngine.parseErrorNumber(from: "no number here"))
     }
 
     func testScriptResultInit() {

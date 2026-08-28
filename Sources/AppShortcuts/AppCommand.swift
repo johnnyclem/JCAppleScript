@@ -1,4 +1,5 @@
 import Foundation
+import JCAppleScript
 
 /// A parameter for an app command.
 public struct CommandParameter: Sendable, Codable {
@@ -64,7 +65,18 @@ public struct AppCommand: Sendable {
     /// Parameters this command accepts.
     public let parameters: [CommandParameter]
 
+    /// Whether this command executes caller-controlled code (shell commands,
+    /// JavaScript, etc.). Dangerous commands are blocked when the MCP server
+    /// runs in safe mode.
+    public let dangerous: Bool
+
+    /// The declarative script template this command was built from, when it
+    /// was defined via a template (e.g. loaded from a JSON manifest).
+    /// `${param}` placeholders are replaced with sanitized argument values.
+    public let scriptTemplate: String?
+
     /// A closure that generates the AppleScript source for given arguments.
+    /// Arguments have already been sanitized (see `sanitizedArguments`).
     public let scriptGenerator: @Sendable ([String: String]) -> String
 
     public init(
@@ -73,6 +85,7 @@ public struct AppCommand: Sendable {
         description: String,
         category: String = "General",
         parameters: [CommandParameter],
+        dangerous: Bool = false,
         scriptGenerator: @escaping @Sendable ([String: String]) -> String
     ) {
         self.id = id
@@ -80,15 +93,87 @@ public struct AppCommand: Sendable {
         self.description = description
         self.category = category
         self.parameters = parameters
+        self.dangerous = dangerous
+        self.scriptTemplate = nil
         self.scriptGenerator = scriptGenerator
     }
 
-    /// Generate the AppleScript source for this command with the given arguments.
-    public func generateScript(arguments: [String: String]) -> String {
-        scriptGenerator(arguments)
+    /// Create a command from a declarative script template.
+    ///
+    /// `${param}` placeholders in the template are replaced with the sanitized
+    /// value of the corresponding argument (or the parameter's default value).
+    /// Placeholders for absent optional parameters are replaced with an empty
+    /// string. This is how manifest-defined commands are constructed.
+    public init(
+        id: String,
+        name: String,
+        description: String,
+        category: String = "General",
+        parameters: [CommandParameter],
+        dangerous: Bool = false,
+        scriptTemplate: String
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.category = category
+        self.parameters = parameters
+        self.dangerous = dangerous
+        self.scriptTemplate = scriptTemplate
+        let parameterNames = parameters.map(\.name)
+        self.scriptGenerator = { args in
+            var script = scriptTemplate
+            for paramName in parameterNames {
+                script = script.replacingOccurrences(of: "${\(paramName)}", with: args[paramName] ?? "")
+            }
+            return script
+        }
     }
 
-    /// Validate that all required parameters are provided.
+    /// Generate the AppleScript source for this command with the given arguments.
+    ///
+    /// Arguments are sanitized before being handed to the script generator:
+    /// string-like values are escaped for inclusion in quoted AppleScript
+    /// literals, integers and booleans are validated/normalized, values not
+    /// in a parameter's allowed list are dropped, and arguments that do not
+    /// correspond to a declared parameter are discarded.
+    public func generateScript(arguments: [String: String]) -> String {
+        scriptGenerator(sanitizedArguments(from: arguments))
+    }
+
+    /// Sanitize raw argument values according to the declared parameter types.
+    public func sanitizedArguments(from arguments: [String: String]) -> [String: String] {
+        var sanitized: [String: String] = [:]
+        for param in parameters {
+            guard let raw = arguments[param.name] ?? param.defaultValue else { continue }
+            if let allowed = param.allowedValues, !allowed.contains(raw) {
+                // Fall back to the default when the raw value is not permitted.
+                if let def = param.defaultValue, allowed.contains(def) {
+                    sanitized[param.name] = def
+                }
+                continue
+            }
+            switch param.type {
+            case .integer:
+                if let value = AppleScriptString.integer(raw) {
+                    sanitized[param.name] = value
+                } else if let def = param.defaultValue, let value = AppleScriptString.integer(def) {
+                    sanitized[param.name] = value
+                }
+            case .boolean:
+                if let value = AppleScriptString.boolean(raw) {
+                    sanitized[param.name] = value
+                } else if let def = param.defaultValue, let value = AppleScriptString.boolean(def) {
+                    sanitized[param.name] = value
+                }
+            case .string, .filePath, .date, .array:
+                sanitized[param.name] = AppleScriptString.escape(raw)
+            }
+        }
+        return sanitized
+    }
+
+    /// Validate that all required parameters are provided and well-typed.
     public func validate(arguments: [String: String]) -> [String] {
         var errors: [String] = []
         for param in parameters where param.required {
@@ -99,10 +184,18 @@ public struct AppCommand: Sendable {
             }
         }
         for param in parameters {
-            if let value = arguments[param.name], let allowed = param.allowedValues {
-                if !allowed.contains(value) {
-                    errors.append("Invalid value '\(value)' for parameter '\(param.name)'. Allowed: \(allowed.joined(separator: ", "))")
-                }
+            guard let value = arguments[param.name], !value.isEmpty else { continue }
+            if let allowed = param.allowedValues, !allowed.contains(value) {
+                errors.append("Invalid value '\(value)' for parameter '\(param.name)'. Allowed: \(allowed.joined(separator: ", "))")
+                continue
+            }
+            switch param.type {
+            case .integer where AppleScriptString.integer(value) == nil:
+                errors.append("Parameter '\(param.name)' must be an integer, got '\(value)'")
+            case .boolean where AppleScriptString.boolean(value) == nil:
+                errors.append("Parameter '\(param.name)' must be a boolean (true/false), got '\(value)'")
+            default:
+                break
             }
         }
         return errors

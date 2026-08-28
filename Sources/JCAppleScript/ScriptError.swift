@@ -28,3 +28,11 @@ public enum ScriptError: Error, Sendable {
         }
     }
 }
+
+extension ScriptError: LocalizedError {
+    public var errorDescription: String? { localizedDescription }
+}
+
+extension ScriptError: CustomStringConvertible {
+    public var description: String { localizedDescription }
+}
