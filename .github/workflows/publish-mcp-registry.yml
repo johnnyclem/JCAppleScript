@@ -28,6 +28,15 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Ensure release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ steps.tag.outputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+          gh release create "${{ steps.tag.outputs.tag }}" --repo "${{ github.repository }}" \
+            --title "${{ steps.tag.outputs.tag }}" --generate-notes
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.tag.outputs.tag }}
