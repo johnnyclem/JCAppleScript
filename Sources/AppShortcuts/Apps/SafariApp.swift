@@ -198,7 +198,8 @@ public struct SafariApp: ScriptableApp {
             category: "JavaScript",
             parameters: [
                 CommandParameter(name: "script", description: "The JavaScript code to execute"),
-            ]
+            ],
+            dangerous: true
         ) { args in
             let script = args["script", default: ""]
             return """

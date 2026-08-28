@@ -19,7 +19,8 @@ public struct TerminalApp: ScriptableApp {
             category: "Execution",
             parameters: [
                 CommandParameter(name: "command", description: "The shell command to execute"),
-            ]
+            ],
+            dangerous: true
         ) { args in
             let command = args["command", default: ""]
             return """
@@ -41,7 +42,8 @@ public struct TerminalApp: ScriptableApp {
             category: "Execution",
             parameters: [
                 CommandParameter(name: "command", description: "The shell command to execute"),
-            ]
+            ],
+            dangerous: true
         ) { args in
             let command = args["command", default: ""]
             return """
@@ -59,7 +61,8 @@ public struct TerminalApp: ScriptableApp {
             category: "Execution",
             parameters: [
                 CommandParameter(name: "command", description: "The shell command to execute"),
-            ]
+            ],
+            dangerous: true
         ) { args in
             let command = args["command", default: ""]
             return """
@@ -82,7 +85,8 @@ public struct TerminalApp: ScriptableApp {
             parameters: [
                 CommandParameter(name: "command", description: "The shell command to execute"),
                 CommandParameter(name: "tabIndex", description: "The 1-based index of the tab", type: .integer),
-            ]
+            ],
+            dangerous: true
         ) { args in
             let command = args["command", default: ""]
             let tabIndex = args["tabIndex", default: "1"]
@@ -434,19 +438,29 @@ public struct TerminalApp: ScriptableApp {
                 CommandParameter(name: "cursorColor", description: "Cursor color as comma-separated RGB", required: false),
             ]
         ) { args in
+            // Colors are interpolated outside of quotes, so they must be
+            // strictly validated as integer triples rather than escaped.
+            func rgbList(_ value: String?) -> String? {
+                guard let value = value, !value.isEmpty else { return nil }
+                let components = value.split(separator: ",").compactMap {
+                    Int($0.trimmingCharacters(in: .whitespaces))
+                }
+                guard components.count == 3 else { return nil }
+                return components.map { String(min(max($0, 0), 65535)) }.joined(separator: ", ")
+            }
             var lines: [String] = []
             lines.append("tell application \"Terminal\"")
             lines.append("    set s to current settings of selected tab of front window")
-            if let bg = args["backgroundColor"], !bg.isEmpty {
+            if let bg = rgbList(args["backgroundColor"]) {
                 lines.append("    set background color of s to {\(bg)}")
             }
-            if let txt = args["normalTextColor"], !txt.isEmpty {
+            if let txt = rgbList(args["normalTextColor"]) {
                 lines.append("    set normal text color of s to {\(txt)}")
             }
-            if let bld = args["boldTextColor"], !bld.isEmpty {
+            if let bld = rgbList(args["boldTextColor"]) {
                 lines.append("    set bold text color of s to {\(bld)}")
             }
-            if let cur = args["cursorColor"], !cur.isEmpty {
+            if let cur = rgbList(args["cursorColor"]) {
                 lines.append("    set cursor color of s to {\(cur)}")
             }
             lines.append("end tell")

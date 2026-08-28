@@ -14,24 +14,22 @@ final class MCPTransport {
         decoder = JSONDecoder()
     }
 
-    /// Read a single JSON-RPC request from stdin. Returns nil on EOF.
+    /// Read the next JSON-RPC request from stdin. Returns nil on EOF.
+    ///
+    /// Blank lines are skipped and malformed lines are answered with a
+    /// JSON-RPC parse error; neither shuts the server down.
     func readRequest() -> JSONRPCRequest? {
-        guard let line = readLine(strippingNewline: true), !line.isEmpty else {
-            return nil
+        while let line = readLine(strippingNewline: true) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty else { continue }
+            do {
+                return try decoder.decode(JSONRPCRequest.self, from: Data(trimmed.utf8))
+            } catch {
+                log("Failed to decode request: \(error)")
+                writeResponse(JSONRPCResponse(id: nil, error: .parseError))
+            }
         }
-        guard let data = line.data(using: .utf8) else {
-            log("Failed to convert input line to data")
-            return nil
-        }
-        do {
-            return try decoder.decode(JSONRPCRequest.self, from: data)
-        } catch {
-            log("Failed to decode request: \(error)")
-            // Try to send a parse error response
-            let errorResponse = JSONRPCResponse(id: nil, error: .parseError)
-            writeResponse(errorResponse)
-            return nil
-        }
+        return nil
     }
 
     /// Write a JSON-RPC response to stdout.
