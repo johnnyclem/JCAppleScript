@@ -37,9 +37,10 @@ jobs:
           gh release create "${{ steps.tag.outputs.tag }}" --repo "${{ github.repository }}" \
             --title "${{ steps.tag.outputs.tag }}" --generate-notes
 
+      # No explicit ref: release events check out the release tag by
+      # default, and manual dispatches check out the dispatched branch
+      # (so a fix on that branch is actually used).
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Build universal binary
         run: |
