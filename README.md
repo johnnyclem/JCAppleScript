@@ -18,7 +18,7 @@ Add JCAppleScript to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/johnnyclem/JCAppleScript.git", branch: "main")
+    .package(url: "https://github.com/johnnyclem/JCAppleScript.git", from: "2.0.0")
 ]
 ```
 
@@ -99,6 +99,8 @@ let results = registry.searchCommands("send")
 ### Using the MCP Server
 
 The `jcas-mcp` executable is a [Model Context Protocol](https://modelcontextprotocol.io) server that AI assistants (Claude, GPT, etc.) can use to control macOS applications.
+
+It is published to the [official MCP registry](https://registry.modelcontextprotocol.io) as **`io.github.johnnyclem/jcas-mcp`**, and each GitHub release ships a prebuilt `jcas-mcp.mcpb` bundle (universal macOS binary) that can be installed directly in Claude Desktop via Settings → Extensions.
 
 #### Setup with Claude Desktop
 

@@ -1,0 +1,30 @@
+{
+  "manifest_version": "0.2",
+  "name": "jcas-mcp",
+  "display_name": "JCAppleScript",
+  "version": "2.0.0",
+  "description": "Control macOS apps via AppleScript/JXA: pre-built sanitized commands plus script execution tools.",
+  "long_description": "MCP server exposing AppleScript automation for macOS. Ships command sheets for 12 built-in apps (Messages, Mail, Reminders, Calendar, Notes, Finder, Safari, Music, Terminal, System Settings, Xcode, Speech Recognition) with type-aware argument sanitization, plus tools to execute AppleScript or JXA, check script syntax, and preview generated scripts. Set JCAS_SAFE_MODE=1 to disable arbitrary-code tools.",
+  "author": {
+    "name": "John Clem",
+    "url": "https://github.com/johnnyclem"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johnnyclem/JCAppleScript"
+  },
+  "homepage": "https://github.com/johnnyclem/JCAppleScript",
+  "license": "MIT",
+  "server": {
+    "type": "binary",
+    "entry_point": "jcas-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/jcas-mcp",
+      "args": []
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin"]
+  },
+  "keywords": ["applescript", "jxa", "macos", "automation", "osascript"]
+}

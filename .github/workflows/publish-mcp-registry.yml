@@ -1,0 +1,81 @@
+name: Publish to MCP Registry
+
+# Builds the jcas-mcp binary, packs it as an MCPB bundle, attaches it to the
+# GitHub release, and publishes the server to the official MCP registry
+# (registry.modelcontextprotocol.io) using GitHub OIDC authentication for the
+# io.github.johnnyclem namespace.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to build and publish (e.g. v2.0.0)"
+        required: true
+
+permissions:
+  id-token: write   # OIDC login to the MCP registry
+  contents: write   # upload the .mcpb asset to the release
+
+jobs:
+  publish:
+    runs-on: macos-latest
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.release.tag_name || github.event.inputs.tag }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Build universal binary
+        run: |
+          swift build -c release --arch arm64 --arch x86_64
+          BIN=".build/apple/Products/Release/jcas-mcp"
+          "$BIN" --version
+          echo "BIN=$BIN" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: swift test
+
+      - name: Pack MCPB bundle
+        run: |
+          npm install -g @anthropic-ai/mcpb
+          mkdir -p bundle
+          jq --arg v "${{ steps.tag.outputs.version }}" '.version = $v' mcpb/manifest.json > bundle/manifest.json
+          cp "$BIN" bundle/jcas-mcp
+          chmod +x bundle/jcas-mcp
+          mcpb pack bundle jcas-mcp.mcpb
+          shasum -a 256 jcas-mcp.mcpb | awk '{print $1}' > mcpb.sha256
+          echo "MCPB_SHA256=$(cat mcpb.sha256)" >> "$GITHUB_ENV"
+
+      - name: Upload bundle to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.tag.outputs.tag }}" jcas-mcp.mcpb --clobber --repo "${{ github.repository }}"
+
+      - name: Finalize server.json
+        run: |
+          jq --arg v "${{ steps.tag.outputs.version }}" \
+             --arg url "https://github.com/${{ github.repository }}/releases/download/${{ steps.tag.outputs.tag }}/jcas-mcp.mcpb" \
+             --arg sha "$MCPB_SHA256" \
+             '.version = $v
+              | .packages[0].version = $v
+              | .packages[0].identifier = $url
+              | .packages[0].fileSha256 = $sha' \
+             server.json > server.publish.json
+          mv server.publish.json server.json
+          cat server.json
+
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m).tar.gz" | tar xz mcp-publisher
+
+      - name: Publish to MCP registry
+        run: |
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish

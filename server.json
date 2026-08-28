@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.johnnyclem/jcas-mcp",
+  "title": "JCAppleScript",
+  "description": "Control macOS apps via AppleScript/JXA: pre-built sanitized commands for Messages, Mail, Finder, Safari, Music, Xcode and more, plus script execution tools.",
+  "version": "2.0.0",
+  "websiteUrl": "https://github.com/johnnyclem/JCAppleScript",
+  "repository": {
+    "url": "https://github.com/johnnyclem/JCAppleScript",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/johnnyclem/JCAppleScript/releases/download/v2.0.0/jcas-mcp.mcpb",
+      "version": "2.0.0",
+      "fileSha256": "REPLACED_BY_CI",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "JCAS_SAFE_MODE",
+          "description": "Set to 1 to disable tools that execute arbitrary code (execute_applescript, execute_jxa, tell_application) and registry commands flagged dangerous.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "JCAS_APP_MANIFESTS",
+          "description": "Colon-separated list of JSON manifest files with additional community app definitions to load at startup.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
