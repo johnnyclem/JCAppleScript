@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.johnnyclem/jcas-mcp",
   "title": "JCAppleScript",
-  "description": "Control macOS apps via AppleScript/JXA: pre-built sanitized commands for Messages, Mail, Finder, Safari, Music, Xcode and more, plus script execution tools.",
+  "description": "Control macOS apps via AppleScript/JXA: sanitized commands for Messages, Mail, Finder, and more.",
   "version": "2.0.0",
   "websiteUrl": "https://github.com/johnnyclem/JCAppleScript",
   "repository": {
