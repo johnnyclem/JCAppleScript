@@ -28,9 +28,19 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Ensure release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ steps.tag.outputs.tag }}" --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+          gh release create "${{ steps.tag.outputs.tag }}" --repo "${{ github.repository }}" \
+            --title "${{ steps.tag.outputs.tag }}" --generate-notes
+
+      # No explicit ref: release events check out the release tag by
+      # default, and manual dispatches check out the dispatched branch
+      # (so a fix on that branch is actually used).
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Build universal binary
         run: |
